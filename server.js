@@ -1,4 +1,3 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -12,10 +11,7 @@ app.use(cors());
 
 //  Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log(" MongoDB Connected"))
   .catch((err) => console.error(" MongoDB Connection Error:", err));
 
@@ -30,10 +26,6 @@ const registrationSchema = new mongoose.Schema({
 });
 
 const Registration = mongoose.model("Registration", registrationSchema);
-
-// -------------------------------
-// ROUTES
-// -------------------------------
 
 // Health Check
 app.get("/", (req, res) => {
@@ -69,8 +61,6 @@ app.post("/api/register", async (req, res) => {
         .status(400)
         .json({ message: "Mobile number should be 10 digits" });
     }
-
-    // 💾 Save to MongoDB
     const newRegistration = new Registration({
       name,
       competition,
@@ -79,9 +69,7 @@ app.post("/api/register", async (req, res) => {
       category,
       fee,
     });
-
-    await newRegistration.save();
-
+   await newRegistration.save();
     res
       .status(201)
       .json({ message: "✅ Registration successful!", data: newRegistration });
@@ -157,10 +145,7 @@ app.get("/api/stalls", async (req, res) => {
     res.status(500).json({ error: "Error fetching stalls" });
   }
 });
-
-
 //SPONSORSHIP SCREEN
-// ------------------- SPONSORSHIP SCREEN --------------------
 const sponsorshipSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -195,8 +180,6 @@ const sponsorshipSchema = new mongoose.Schema({
 });
 
 const Sponsorship = mongoose.model("Sponsorship", sponsorshipSchema);
-
-// -------------------- API ROUTES --------------------
 
 //  Register Sponsorship
 app.post("/api/sponsorship/register", async (req, res) => {
@@ -248,6 +231,40 @@ app.get("/api/sponsorship", async (req, res) => {
   }
 });
 
-//  Server start
+const contactSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  mobile: { type: String, required: true },
+  email: { type: String, required: true },
+  message: { type: String, required: true },
+  submittedAt: { type: Date, default: Date.now },
+});
+
+const Contact = mongoose.model("Contact", contactSchema);
+
+// POST - Add contact enquiry
+app.post("/api/contact", async (req, res) => {
+  try {
+    const { name, mobile, email, message } = req.body;
+    const newContact = new Contact({ name, mobile, email, message });
+    await newContact.save();
+    res.status(201).json({ message: "Contact form submitted successfully!" });
+  } catch (err) {
+    console.error("Error saving contact:", err);
+    res.status(500).json({ message: "Error submitting form" });
+  }
+});
+
+// GET - Fetch all contacts (admin view)
+app.get("/api/contact", async (req, res) => {
+  try {
+    const contacts = await Contact.find().sort({ submittedAt: -1 });
+    res.json(contacts);
+  } catch (err) {
+    console.error("Error fetching contacts:", err);
+    res.status(500).json({ message: "Error fetching contacts" });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(` Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
