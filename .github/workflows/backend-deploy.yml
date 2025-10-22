@@ -12,40 +12,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # NOTE: AWS credentials are included for completeness but not strictly needed for this specific SSH-based script.
-
-      # --- CRITICAL: DEPLOY BACKEND VIA SSH ---
-      - name: Deploy and Restart Backend via PM2
-        uses: appleboy/ssh-action@master
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          host: 3.110.182.77
-          username: ec2-user
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
-          # The commands to run on the EC2 instance
-          script: |
-            # Directory where the code will live on the EC2 instance
-            BACKEND_DIR="/home/ec2-user/eventDeploybckend"
-            MAIN_FILE="server.js" # <-- **CONFIRM YOUR MAIN BACKEND FILE NAME HERE (e.g., app.js, index.js, server.js)**
-
-            echo "1. Deploying/updating backend code..."
-            if [ ! -d "$BACKEND_DIR" ]; then
-              # If directory doesn't exist, clone the repo
-              git clone https://github.com/Kaushalcollege/eventDeploybckend.git $BACKEND_DIR
-            fi
-
-            cd $BACKEND_DIR
-            git pull origin main
-
-            echo "2. Installing/updating dependencies..."
-            npm install
-
-            # 3. Start or reload the application using PM2
-            # Use 'pm2 start' only for the first deployment, then 'pm2 reload'
-            echo "3. Starting/reloading app with PM2..."
-            pm2 start $MAIN_FILE --name "event-backend" || pm2 reload "event-backend"
-
-            # 4. Save PM2 state for persistence on reboot
-            pm2 save
-
-            echo "Deployment complete."
+      # --- SECURE DEPLOYMENT VIA AWS SSM ---
+      - name: Deploy Backend to EC2 via SSM
+        run: |
+          echo "--- Sending SSM Command for Backend ---"
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "echo --- 1. Navigating to backend directory ---",
+              "cd /home/ec2-user/eventDeploybckend",
+              "echo --- 2. Pulling latest code ---",
+              "git pull",
+              "echo --- 3. Installing dependencies ---",
+              "npm install",
+              "echo --- 4. Restarting PM2 process ---",
+              "pm2 restart event-backend",
+              "echo --- Backend deploy complete ---"
+            ]'
