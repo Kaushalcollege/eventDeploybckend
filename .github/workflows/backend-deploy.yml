@@ -29,11 +29,17 @@ jobs:
             --parameters 'commands=[
               "echo --- 1. Navigating to backend directory ---",
               "cd /home/ec2-user/eventDeploybckend",
-              "echo --- 2. Pulling latest code ---",
-              "git pull",
+              
+              "echo --- 2. Forcing pull of latest code ---",
+              "git fetch --all",
+              "git reset --hard origin/main",
+              
               "echo --- 3. Installing dependencies ---",
               "npm install",
-              "echo --- 4. Restarting PM2 process ---",
+              
+              "echo --- 4. Loading environment and restarting PM2 ---",
+              "source /home/ec2-user/.bashrc",
               "pm2 restart event-backend",
+              
               "echo --- Backend deploy complete ---"
             ]'
