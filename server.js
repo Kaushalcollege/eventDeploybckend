@@ -43,7 +43,7 @@ app.get("/", (req, res) => {
 // Generate unique registration ID
 function generateRegistrationId() {
   return "REG" + Math.floor(100000 + Math.random() * 900000);
-} 
+}
 app.post("/api/register", async (req, res) => {
   try {
     const { name, competition, email, mobile, category, fee } = req.body;
@@ -92,14 +92,18 @@ app.post("/api/register", async (req, res) => {
       category,
       fee,
     });
-   await newRegistration.save();
+    await newRegistration.save();
     res
       .status(201)
-      .json({ message: "✅ Registration successful!",registrationId,data: newRegistration });
+      .json({
+        message: "Registration successful!",
+        registrationId,
+        data: newRegistration,
+      });
   } catch (error) {
     console.error("Error during registration:", error);
     res.status(500).json({
-      message: "❌ Server error. Please try again later.",
+      message: "Server error. Please try again later.",
     });
   }
 });
@@ -132,7 +136,7 @@ app.get("/api/registration/:input", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-//STALL SCHEMA 
+//STALL SCHEMA
 const stallSchema = new mongoose.Schema({
   stallId: { type: String, unique: true },
   name: { type: String, required: true },
@@ -148,7 +152,7 @@ const Stall = mongoose.model("Stall", stallSchema);
 
 // Test Route
 app.get("/", (req, res) => {
-  res.send("✅ Stall Registration Backend Running Successfully!");
+  res.send("Stall Registration Backend Running Successfully!");
 });
 
 // POST route to register a stall
@@ -187,7 +191,9 @@ app.post("/api/stalls", async (req, res) => {
     });
 
     await stall.save();
-    res.status(201).json({ message: "✅ Stall registered successfully", stallId, stall });
+    res
+      .status(201)
+      .json({ message: "Stall registered successfully", stallId, stall });
   } catch (error) {
     console.error("Error saving stall:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -250,7 +256,7 @@ app.post("/api/sponsorship", async (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const mobileRegex = /^[0-9]{10}$/;
 
-    if (!name || !competition || !email || !mobile ) {
+    if (!name || !competition || !email || !mobile) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -283,11 +289,11 @@ app.post("/api/sponsorship", async (req, res) => {
 
     res.status(201).json({
       message:
-        "✅ Thank you for your interest in sponsoring Vishwasri TechFest 2025! Our team will contact you shortly.",
+        "Thank you for your interest in sponsoring Vishwasri TechFest 2025! Our team will contact you shortly.",
       data: newSponsor,
     });
   } catch (error) {
-    console.error("❌ Error saving sponsorship:", error);
+    console.error("Error saving sponsorship:", error);
     res.status(500).json({ message: "Server error. Please try again later." });
   }
 });
@@ -344,9 +350,18 @@ const razorpay = new Razorpay({
 });
 
 // ✅ Create order API
-app.post("/create-order", async (req, res) => {
+app.post("/api/create-order", async (req, res) => {
   try {
-    const { amount, name, category, competition, eventName, type, paymentFor, contact,} = req.body; // amount in INR
+    const {
+      amount,
+      name,
+      category,
+      competition,
+      eventName,
+      type,
+      paymentFor,
+      contact,
+    } = req.body; // amount in INR
 
     const options = {
       amount: amount * 100, // convert to paise
@@ -370,7 +385,7 @@ app.post("/create-order", async (req, res) => {
         eventName,
       });
       await newTicketPayment.save();
-      console.log("🎟️ Ticket order created:", order.id);
+      console.log("Ticket order created:", order.id);
     } else {
       // Registration payment
       const newRegPayment = new RegistrationPayment({
@@ -385,12 +400,12 @@ app.post("/create-order", async (req, res) => {
         feePaid: amount,
       });
       await newRegPayment.save();
-      console.log("📝 Registration order created:", order.id);
+      console.log("Registration order created:", order.id);
     }
 
     res.json(order);
   } catch (err) {
-    console.error("❌ Create order error:", err);
+    console.error("Create order error:", err);
     res.status(500).json({ error: "Order creation failed" });
   }
 });
@@ -405,9 +420,14 @@ const generateTicketId = async () => {
 };
 
 // ✅ Verify Payment API
-app.post("/verify-payment", async (req, res) => {
+app.post("/api/verify-payment", async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, paymentFor} = req.body;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      paymentFor,
+    } = req.body;
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
@@ -418,7 +438,9 @@ app.post("/verify-payment", async (req, res) => {
     const isAuthentic = razorpay_signature === expectedSign;
 
     if (!isAuthentic) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid signature" });
     }
 
     // ✅ Update correct collection
@@ -434,21 +456,30 @@ app.post("/verify-payment", async (req, res) => {
       const ticketId = await generateTicketId();
       updateData.ticketId = ticketId;
 
-      await TicketPayment.findOneAndUpdate({ orderId: razorpay_order_id }, updateData);
-      console.log("🎟️ Ticket payment verified:", razorpay_payment_id);
+      await TicketPayment.findOneAndUpdate(
+        { orderId: razorpay_order_id },
+        updateData
+      );
+      console.log("Ticket payment verified:", razorpay_payment_id);
       return res.json({
         success: true,
         message: "Ticket payment verified successfully",
         ticketId,
       });
     } else {
-      await RegistrationPayment.findOneAndUpdate({ orderId: razorpay_order_id }, updateData);
+      await RegistrationPayment.findOneAndUpdate(
+        { orderId: razorpay_order_id },
+        updateData
+      );
       console.log("📝 Registration payment verified:", razorpay_payment_id);
     }
 
-    res.json({ success: true, message: "Registration payment verified successfully", });
+    res.json({
+      success: true,
+      message: "Registration payment verified successfully",
+    });
   } catch (err) {
-    console.error("❌ Verify payment error:", err);
+    console.error("Verify payment error:", err);
     res.status(500).json({ error: "Payment verification failed" });
   }
 });
@@ -464,17 +495,17 @@ app.get("/api/ticket/:input", async (req, res) => {
     });
 
     if (!ticket) {
-      return res.status(404).json({ message: "No ticket found for this email or phone number" });
+      return res
+        .status(404)
+        .json({ message: "No ticket found for this email or phone number" });
     }
 
     res.status(200).json(ticket);
   } catch (err) {
-    console.error("❌ Error fetching ticket:", err);
+    console.error("Error fetching ticket:", err);
     res.status(500).json({ message: "Server error while fetching ticket" });
   }
 });
 
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-
