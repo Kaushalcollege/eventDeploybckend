@@ -93,13 +93,11 @@ app.post("/api/register", async (req, res) => {
       fee,
     });
     await newRegistration.save();
-    res
-      .status(201)
-      .json({
-        message: "Registration successful!",
-        registrationId,
-        data: newRegistration,
-      });
+    res.status(201).json({
+      message: "Registration successful!",
+      registrationId,
+      data: newRegistration,
+    });
   } catch (error) {
     console.error("Error during registration:", error);
     res.status(500).json({
@@ -374,18 +372,25 @@ app.post("/api/create-order", async (req, res) => {
     // 💾 Save order in correct collection
     if (paymentFor === "ticket") {
       // Ticket purchase
+      const ticketId = await generateTicketId(); // ⬅️ MOVED HERE
       const newTicketPayment = new TicketPayment({
         orderId: order.id,
+        ticketId: ticketId, // ⬅️ ADDED HERE
         amount: order.amount / 100,
         currency: order.currency,
-        status: order.status,
+        status: order.status, // This will be 'created'
         contact,
         name,
         type,
         eventName,
       });
       await newTicketPayment.save();
-      console.log("Ticket order created:", order.id);
+      console.log(
+        "Ticket order created:",
+        order.id,
+        "with TicketID:",
+        ticketId
+      );
     } else {
       // Registration payment
       const newRegPayment = new RegistrationPayment({
@@ -452,19 +457,25 @@ app.post("/api/verify-payment", async (req, res) => {
     };
 
     if (paymentFor === "ticket") {
-      // 🎟️ Generate unique ticket ID
-      const ticketId = await generateTicketId();
-      updateData.ticketId = ticketId;
-
-      await TicketPayment.findOneAndUpdate(
+      // 🎟️ Find the ticket, update it, and get the new version
+      const updatedTicket = await TicketPayment.findOneAndUpdate(
         { orderId: razorpay_order_id },
-        updateData
+        updateData,
+        { new: true } // ⬅️ ADDED: This returns the updated document
       );
+
+      // ⬅️ ADDED: Good practice to check if the ticket was found
+      if (!updatedTicket) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Order not found" });
+      }
+
       console.log("Ticket payment verified:", razorpay_payment_id);
       return res.json({
         success: true,
         message: "Ticket payment verified successfully",
-        ticketId,
+        ticketId: updatedTicket.ticketId, // ⬅️ CHANGED: Get ID from the found doc
       });
     } else {
       await RegistrationPayment.findOneAndUpdate(
