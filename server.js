@@ -348,6 +348,7 @@ const razorpay = new Razorpay({
 });
 
 // ✅ Create order API
+// ✅ Create order API
 app.post("/api/create-order", async (req, res) => {
   try {
     const {
@@ -371,8 +372,9 @@ app.post("/api/create-order", async (req, res) => {
 
     // 💾 Save order in correct collection
     if (paymentFor === "ticket") {
-      // Ticket purchase
-
+      // =================================================================
+      // ⬇️ THIS IS THE FIX YOU ARE ADDING ⬇️
+      // =================================================================
       try {
         // Find any old, "created" (incomplete) payments for this user
         const oldFailedPayment = await TicketPayment.findOne({
@@ -387,13 +389,16 @@ app.post("/api/create-order", async (req, res) => {
         }
       } catch (dbError) {
         console.error("Error cleaning up old payments:", dbError);
-        // Don't stop the transaction, just log the error
       }
+      // =================================================================
+      // ⬆️ END OF THE FIX ⬆️
+      // =================================================================
 
-      const ticketId = await generateTicketId(); // ⬅️ MOVED HERE
+      // Ticket purchase
+      const ticketId = await generateTicketId(); // ⬅️ THIS IS ALSO PART OF THE FIX
       const newTicketPayment = new TicketPayment({
         orderId: order.id,
-        ticketId: ticketId, // ⬅️ ADDED HERE
+        ticketId: ticketId, // ⬅️ THIS IS ALSO PART OF THE FIX
         amount: order.amount / 100,
         currency: order.currency,
         status: order.status, // This will be 'created'
