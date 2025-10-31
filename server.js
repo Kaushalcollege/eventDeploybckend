@@ -372,6 +372,24 @@ app.post("/api/create-order", async (req, res) => {
     // 💾 Save order in correct collection
     if (paymentFor === "ticket") {
       // Ticket purchase
+
+      try {
+        // Find any old, "created" (incomplete) payments for this user
+        const oldFailedPayment = await TicketPayment.findOne({
+          contact: contact,
+          status: "created",
+        });
+
+        // If one exists, delete it to prevent a duplicate key error
+        if (oldFailedPayment) {
+          console.log("Removing old failed payment:", oldFailedPayment.orderId);
+          await TicketPayment.deleteOne({ _id: oldFailedPayment._id });
+        }
+      } catch (dbError) {
+        console.error("Error cleaning up old payments:", dbError);
+        // Don't stop the transaction, just log the error
+      }
+
       const ticketId = await generateTicketId(); // ⬅️ MOVED HERE
       const newTicketPayment = new TicketPayment({
         orderId: order.id,
